@@ -54,19 +54,20 @@ jobs:
             --sdk_root="$ANDROID_HOME" \
             "platforms;android-35" \
             "build-tools;35.0.0"
-            
 
+            
       - name: Build debug APK
         shell: bash
         run: |
           set -euo pipefail
+
           cd "$PROJECT_DIR"
-          if [ ! -f gradlew ]; then
-            echo "ERROR: gradlew is missing from the project"
-            exit 1
-          fi
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+
+          gradle_version="8.11.1"
+          wget -q "https://services.gradle.org/distributions/gradle-${gradle_version}-bin.zip" -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          /tmp/gradle-${gradle_version}/bin/gradle assembleDebug --no-daemon
+          
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
