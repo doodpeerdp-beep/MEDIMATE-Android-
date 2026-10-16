@@ -21,7 +21,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f MEDIMATE_Android_Project.zip
           mkdir -p android-project
           unzip -q MEDIMATE_Android_Project.zip -d android-project
 
@@ -30,13 +29,11 @@ jobs:
             -print -quit | xargs -r dirname)"
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Could not find settings.gradle in ZIP."
-            find android-project -maxdepth 4 -type f | head -100
+            echo "ERROR: settings.gradle not found in ZIP"
             exit 1
           fi
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Found project at: $PROJECT_DIR"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -44,31 +41,28 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: '11076708'
-
-      - name: Install Android SDK packages
+      - name: Configure Android SDK
+        shell: bash
         run: |
-          sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0"
-          
+          set -euo pipefail
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          test -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_HOME" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Build debug APK
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-
-          if [ -f ./gradlew ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug --no-daemon
-          else
-            echo "ERROR: Gradle wrapper not found."
-            echo "The project needs a compatible Gradle installation."
+          if [ ! -f gradlew ]; then
+            echo "ERROR: gradlew is missing from the project"
             exit 1
           fi
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -77,4 +71,3 @@ jobs:
           path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           
-        
